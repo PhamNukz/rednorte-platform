@@ -1,0 +1,276 @@
+services:
+  # ─── API Gateway ──────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: rednorte-gateway
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - ms-lista-espera
+      - ms-reasignacion
+      - ms-pacientes
+      - ms-agenda-medica
+      - ms-notificaciones
+      - ms-reportes
+    networks:
+      - rednorte-net
+
+  # ─── Message Broker ───────────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rednorte-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-admin123}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rednorte-net
+
+  # ─── Microservicio: Lista de Espera (Puerto 3001) ─────────────────────────
+  ms-lista-espera:
+    build:
+      context: .
+      dockerfile: services/ms-lista-espera/Dockerfile
+    container_name: ms-lista-espera
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      DB_HOST: db-espera
+      DB_PORT: 5432
+      DB_NAME: ${DB_ESPERA_NAME:-db_espera}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASS: ${DB_PASS:-postgres123}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASS:-admin123}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET:-rednorte_jwt_secret_2025}
+    depends_on:
+      db-espera:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rednorte-net
+
+  db-espera:
+    image: postgres:15-alpine
+    container_name: db-espera
+    environment:
+      POSTGRES_DB: ${DB_ESPERA_NAME:-db_espera}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres123}
+    volumes:
+      - db-espera-data:/var/lib/postgresql/data
+      - ./services/ms-lista-espera/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - rednorte-net
+
+  # ─── Microservicio: Reasignación (Puerto 3002) ────────────────────────────
+  ms-reasignacion:
+    build:
+      context: .
+      dockerfile: services/ms-reasignacion/Dockerfile
+    container_name: ms-reasignacion
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      DB_HOST: db-reasignacion
+      DB_PORT: 5432
+      DB_NAME: ${DB_REASIG_NAME:-db_reasignacion}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASS: ${DB_PASS:-postgres123}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASS:-admin123}@rabbitmq:5672
+      MS_AGENDA_URL: http://ms-agenda-medica:3004
+      MS_LISTA_URL: http://ms-lista-espera:3001
+      JWT_SECRET: ${JWT_SECRET:-rednorte_jwt_secret_2025}
+    depends_on:
+      db-reasignacion:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rednorte-net
+
+  db-reasignacion:
+    image: postgres:15-alpine
+    container_name: db-reasignacion
+    environment:
+      POSTGRES_DB: ${DB_REASIG_NAME:-db_reasignacion}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres123}
+    volumes:
+      - db-reasignacion-data:/var/lib/postgresql/data
+      - ./services/ms-reasignacion/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - rednorte-net
+
+  # ─── Microservicio: Pacientes (Puerto 3003) ───────────────────────────────
+  ms-pacientes:
+    build:
+      context: .
+      dockerfile: services/ms-pacientes/Dockerfile
+    container_name: ms-pacientes
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      DB_HOST: db-pacientes
+      DB_PORT: 5432
+      DB_NAME: ${DB_PACIENTES_NAME:-db_pacientes}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASS: ${DB_PASS:-postgres123}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASS:-admin123}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET:-rednorte_jwt_secret_2025}
+    depends_on:
+      db-pacientes:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rednorte-net
+
+  db-pacientes:
+    image: postgres:15-alpine
+    container_name: db-pacientes
+    environment:
+      POSTGRES_DB: ${DB_PACIENTES_NAME:-db_pacientes}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres123}
+    volumes:
+      - db-pacientes-data:/var/lib/postgresql/data
+      - ./services/ms-pacientes/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - rednorte-net
+
+  # ─── Microservicio: Agenda Médica (Puerto 3004) ───────────────────────────
+  ms-agenda-medica:
+    build:
+      context: .
+      dockerfile: services/ms-agenda-medica/Dockerfile
+    container_name: ms-agenda-medica
+    ports:
+      - "3004:3004"
+    environment:
+      PORT: 3004
+      DB_HOST: db-disponibilidad
+      DB_PORT: 5432
+      DB_NAME: ${DB_DISPON_NAME:-db_disponibilidad}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASS: ${DB_PASS:-postgres123}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASS:-admin123}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET:-rednorte_jwt_secret_2025}
+    depends_on:
+      db-disponibilidad:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rednorte-net
+
+  db-disponibilidad:
+    image: postgres:15-alpine
+    container_name: db-disponibilidad
+    environment:
+      POSTGRES_DB: ${DB_DISPON_NAME:-db_disponibilidad}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-postgres123}
+    volumes:
+      - db-disponibilidad-data:/var/lib/postgresql/data
+      - ./services/ms-agenda-medica/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - rednorte-net
+
+  # ─── Microservicio: Notificaciones (Puerto 3005) ──────────────────────────
+  ms-notificaciones:
+    build:
+      context: .
+      dockerfile: services/ms-notificaciones/Dockerfile
+    container_name: ms-notificaciones
+    ports:
+      - "3005:3005"
+    environment:
+      PORT: 3005
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASS:-admin123}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET:-rednorte_jwt_secret_2025}
+      SMTP_HOST: ${SMTP_HOST:-smtp.example.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-notifications@rednorte.cl}
+      SMTP_PASS: ${SMTP_PASS:-}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - rednorte-net
+
+  # ─── Microservicio: Reportes (Puerto 3006) ────────────────────────────────
+  ms-reportes:
+    build:
+      context: .
+      dockerfile: services/ms-reportes/Dockerfile
+    container_name: ms-reportes
+    ports:
+      - "3006:3006"
+    environment:
+      PORT: 3006
+      DB_ESPERA_URL: postgresql://${DB_USER:-postgres}:${DB_PASS:-postgres123}@db-espera:5432/${DB_ESPERA_NAME:-db_espera}
+      DB_REASIG_URL: postgresql://${DB_USER:-postgres}:${DB_PASS:-postgres123}@db-reasignacion:5432/${DB_REASIG_NAME:-db_reasignacion}
+      DB_PACIENTES_URL: postgresql://${DB_USER:-postgres}:${DB_PASS:-postgres123}@db-pacientes:5432/${DB_PACIENTES_NAME:-db_pacientes}
+      DB_DISPON_URL: postgresql://${DB_USER:-postgres}:${DB_PASS:-postgres123}@db-disponibilidad:5432/${DB_DISPON_NAME:-db_disponibilidad}
+      JWT_SECRET: ${JWT_SECRET:-rednorte_jwt_secret_2025}
+    depends_on:
+      - db-espera
+      - db-reasignacion
+      - db-pacientes
+      - db-disponibilidad
+    networks:
+      - rednorte-net
+
+  # ─── Frontend React ───────────────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: rednorte-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:80
+    networks:
+      - rednorte-net
+
+volumes:
+  db-espera-data:
+  db-reasignacion-data:
+  db-pacientes-data:
+  db-disponibilidad-data:
+
+networks:
+  rednorte-net:
+    driver: bridge

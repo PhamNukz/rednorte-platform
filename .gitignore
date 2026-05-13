@@ -1,0 +1,28 @@
+# Node.js
+node_modules/
+npm-debug.log*
+.env
+.env.local
+
+# Java / Maven
+target/
+*.class
+*.jar
+!**/test-libs/*.jar
+.mvn/
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
