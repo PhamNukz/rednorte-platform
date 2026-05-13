@@ -1,0 +1,15 @@
+-- ============================================================
+-- V1 — Esquema inicial ${artifactId}
+-- Generado con rednorte-archetype v1.0.0
+-- Fecha: ${current.date}
+-- ============================================================
+
+-- TODO: Definir tablas del microservicio ${serviceName}
+-- Ejemplo:
+-- CREATE TABLE IF NOT EXISTS entidades (
+--     id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+--     nombre     VARCHAR(150) NOT NULL,
+--     estado     VARCHAR(50)  NOT NULL DEFAULT 'activo',
+--     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+--     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );
