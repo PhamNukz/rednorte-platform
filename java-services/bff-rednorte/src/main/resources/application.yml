@@ -1,0 +1,70 @@
+server:
+  port: 4000
+
+spring:
+  application:
+    name: bff-rednorte
+
+# URLs de los microservicios Node.js existentes
+services:
+  lista-espera:
+    url: ${MS_LISTA_URL:http://localhost:3001}
+  agenda-medica:
+    url: ${MS_AGENDA_URL:http://localhost:3004}
+  pacientes:
+    url: ${MS_PACIENTES_URL:http://localhost:3003}
+  reportes:
+    url: ${MS_REPORTES_URL:http://localhost:3006}
+
+# Configuración Circuit Breaker (Resilience4j)
+resilience4j:
+  circuitbreaker:
+    instances:
+      listaEspera:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 20s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      agendaMedica:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 20s
+      pacientes:
+        registerHealthIndicator: true
+        slidingWindowSize: 5
+        failureRateThreshold: 60
+        waitDurationInOpenState: 15s
+  timelimiter:
+    instances:
+      listaEspera:
+        timeoutDuration: 5s
+      agendaMedica:
+        timeoutDuration: 5s
+      pacientes:
+        timeoutDuration: 3s
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,circuitbreakers,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# OpenAPI
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+logging:
+  level:
+    com.rednorte.bff: DEBUG
+    io.github.resilience4j: INFO
