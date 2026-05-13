@@ -1,0 +1,8 @@
+{
+  "name": "rednorte-shared",
+  "version": "1.0.0",
+  "dependencies": {
+    "amqplib": "^0.10.4",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
