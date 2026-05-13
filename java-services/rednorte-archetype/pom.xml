@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.rednorte</groupId>
+    <artifactId>rednorte-archetype</artifactId>
+    <version>1.0.0</version>
+    <packaging>maven-archetype</packaging>
+    <name>rednorte-archetype</name>
+    <description>
+        Arquetipo Maven reutilizable para nuevos microservicios Spring Boot
+        de la Plataforma RedNorte. Genera estructura estándar con:
+        - Spring Boot 3.2.5 + Java 21
+        - JPA + PostgreSQL + Flyway
+        - Bean Validation
+        - SpringDoc OpenAPI
+        - Lombok
+        - Estructura de paquetes: domain, repository, service, controller, dto, exception
+        - Tests JUnit 5 + Mockito
+        - Dockerfile listo para producción
+    </description>
+
+    <build>
+        <extensions>
+            <extension>
+                <groupId>org.apache.maven.archetype</groupId>
+                <artifactId>archetype-packaging</artifactId>
+                <version>3.2.1</version>
+            </extension>
+        </extensions>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-archetype-plugin</artifactId>
+                    <version>3.2.1</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

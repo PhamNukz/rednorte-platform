@@ -1,0 +1,209 @@
+/* ── Reset & base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+  background: #f0f4f8;
+  color: #1a1a2e;
+}
+
+/* ── Keyframes ────────────────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,115,177,0.35); }
+  50%       { box-shadow: 0 0 0 8px rgba(0,115,177,0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bounceIn {
+  0%   { opacity: 0; transform: scale(0.75); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@keyframes errorShake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-8px); }
+  40%       { transform: translateX(8px); }
+  60%       { transform: translateX(-5px); }
+  80%       { transform: translateX(5px); }
+}
+
+/* ── Clases de utilidad de animación ──────────────────────────────────────── */
+.animate-fadeInUp   { animation: fadeInUp   0.45s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-fadeIn     { animation: fadeIn     0.35s ease both; }
+.animate-slideLeft  { animation: slideInLeft  0.4s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-slideRight { animation: slideInRight 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-scaleIn    { animation: scaleIn    0.35s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-bounceIn   { animation: bounceIn   0.5s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-shake      { animation: errorShake 0.45s ease both; }
+
+/* Delay helpers */
+.delay-1 { animation-delay: 0.08s; }
+.delay-2 { animation-delay: 0.16s; }
+.delay-3 { animation-delay: 0.24s; }
+.delay-4 { animation-delay: 0.32s; }
+.delay-5 { animation-delay: 0.40s; }
+
+/* ── Página completa: transición de entrada ───────────────────────────────── */
+.page-enter {
+  animation: fadeInUp 0.5s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+/* ── Tab content ──────────────────────────────────────────────────────────── */
+.tab-content {
+  animation: fadeInUp 0.38s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+/* ── Cards con hover ──────────────────────────────────────────────────────── */
+.card-hover {
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  cursor: default;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.12) !important;
+}
+
+/* ── Tabla rows ───────────────────────────────────────────────────────────── */
+.table-row {
+  transition: background 0.15s ease;
+}
+.table-row:hover {
+  background: #f0f7ff !important;
+}
+
+/* ── Botones ──────────────────────────────────────────────────────────────── */
+.btn-animate {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.btn-animate:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+}
+.btn-animate:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* ── Stats cards ──────────────────────────────────────────────────────────── */
+.stat-card {
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+.stat-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 32px rgba(0,115,177,0.18) !important;
+}
+
+/* ── Login card ───────────────────────────────────────────────────────────── */
+.login-card {
+  animation: scaleIn 0.45s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+/* ── Input focus ──────────────────────────────────────────────────────────── */
+.input-field {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+.input-field:focus {
+  border-color: #0073b1 !important;
+  box-shadow: 0 0 0 3px rgba(0,115,177,0.18);
+}
+
+/* ── Badge ────────────────────────────────────────────────────────────────── */
+.badge-animate {
+  animation: scaleIn 0.3s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+/* ── Skeleton loader ──────────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, #e8ecef 25%, #f5f7f9 50%, #e8ecef 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 6px;
+}
+
+/* ── Spinner ──────────────────────────────────────────────────────────────── */
+.spinner {
+  width: 22px; height: 22px;
+  border: 3px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+/* ── Notificación toast ───────────────────────────────────────────────────── */
+.toast {
+  animation: slideInRight 0.35s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.header-animate {
+  animation: fadeIn 0.4s ease both;
+}
+
+/* ── Error box ────────────────────────────────────────────────────────────── */
+.error-box {
+  animation: errorShake 0.45s ease both;
+}
+
+/* ── Hora card ────────────────────────────────────────────────────────────── */
+.hora-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.hora-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(0,115,177,0.15) !important;
+  border-color: #0073b1 !important;
+}
+
+/* ── Nav tab ──────────────────────────────────────────────────────────────── */
+.nav-tab {
+  transition: color 0.18s ease, border-color 0.18s ease;
+  position: relative;
+}
+.nav-tab::after {
+  content: '';
+  position: absolute;
+  bottom: -2px; left: 50%; right: 50%;
+  height: 3px;
+  background: #0073b1;
+  transition: left 0.22s ease, right 0.22s ease;
+  border-radius: 2px 2px 0 0;
+}
+.nav-tab.active::after {
+  left: 0; right: 0;
+}
