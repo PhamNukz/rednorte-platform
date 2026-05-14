@@ -254,6 +254,55 @@ services:
     networks:
       - rednorte-net
 
+  # ─── BFF Java (Puerto 4000) ──────────────────────────────────────────────
+  bff-rednorte:
+    build: ./java-services/bff-rednorte
+    container_name: bff-rednorte
+    ports:
+      - "4000:4000"
+    environment:
+      SERVICES_LISTA_ESPERA_URL: http://ms-lista-espera:3001
+      SERVICES_AGENDA_MEDICA_URL: http://ms-agenda-medica:3004
+      SERVICES_REPORTES_URL: http://ms-reportes:3006
+    depends_on:
+      - ms-lista-espera
+      - ms-agenda-medica
+      - ms-reportes
+    networks:
+      - rednorte-net
+
+  # ─── ms-lista-espera Java (Puerto 8081) ───────────────────────────────────
+  ms-lista-espera-java:
+    build: ./java-services/ms-lista-espera-java
+    container_name: ms-lista-espera-java
+    ports:
+      - "8081:8081"
+    environment:
+      DB_URL: jdbc:postgresql://db-espera:5432/${DB_ESPERA_NAME:-db_espera}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASS: ${DB_PASS:-postgres123}
+    depends_on:
+      db-espera:
+        condition: service_healthy
+    networks:
+      - rednorte-net
+
+  # ─── ms-agenda-medica Java (Puerto 8082) ──────────────────────────────────
+  ms-agenda-medica-java:
+    build: ./java-services/ms-agenda-medica-java
+    container_name: ms-agenda-medica-java
+    ports:
+      - "8082:8082"
+    environment:
+      DB_URL: jdbc:postgresql://db-disponibilidad:5432/${DB_DISPON_NAME:-db_disponibilidad}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASS: ${DB_PASS:-postgres123}
+    depends_on:
+      db-disponibilidad:
+        condition: service_healthy
+    networks:
+      - rednorte-net
+
   # ─── Frontend React ───────────────────────────────────────────────────────
   frontend:
     build: ./frontend

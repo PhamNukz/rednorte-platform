@@ -207,3 +207,66 @@ body {
 .nav-tab.active::after {
   left: 0; right: 0;
 }
+
+/* ── Landing ──────────────────────────────────────────────────────────────── */
+.service-card {
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  cursor: pointer;
+}
+.service-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0,115,177,0.18) !important;
+  border-color: #0073b1 !important;
+}
+.service-card.selected {
+  border-color: #0073b1 !important;
+  background: #eff6ff !important;
+  box-shadow: 0 0 0 3px rgba(0,115,177,0.25) !important;
+}
+
+/* ── Wizard step progress ─────────────────────────────────────────────────── */
+@keyframes stepPop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  70%  { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.step-active { animation: stepPop 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* ── Slot button ──────────────────────────────────────────────────────────── */
+.slot-btn {
+  transition: all 0.15s ease;
+}
+.slot-btn:hover:not(:disabled) {
+  background: #0073b1 !important;
+  color: #fff !important;
+  transform: scale(1.04);
+}
+.slot-btn.selected {
+  background: #0073b1 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(0,115,177,0.35);
+}
+
+/* ── Modal overlay ────────────────────────────────────────────────────────── */
+.modal-overlay {
+  animation: fadeIn 0.2s ease both;
+}
+.modal-card {
+  animation: scaleIn 0.3s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+/* ── Landing hero ─────────────────────────────────────────────────────────── */
+@keyframes heroFloat {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+.hero-icon { animation: heroFloat 3s ease-in-out infinite; }
+
+/* ── Doctor card ──────────────────────────────────────────────────────────── */
+.doctor-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.doctor-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12) !important;
+}

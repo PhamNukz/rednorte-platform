@@ -6,8 +6,8 @@ const { verifyToken, requireRole } = require('../../../../shared/middleware/auth
 // Listar horas disponibles (público para ms-reasignacion)
 router.get('/horas/disponibles', async (req, res) => {
   try {
-    const { especialidad, fecha_desde, fecha_hasta, limit } = req.query;
-    const data = await repository.findHorasDisponibles({ especialidad, fecha_desde, fecha_hasta, limit: parseInt(limit) || 20 });
+    const { especialidad, fecha_desde, fecha_hasta, medico_rut, limit } = req.query;
+    const data = await repository.findHorasDisponibles({ especialidad, fecha_desde, fecha_hasta, medico_rut, limit: parseInt(limit) || 100 });
     res.json({ ok: true, data });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });

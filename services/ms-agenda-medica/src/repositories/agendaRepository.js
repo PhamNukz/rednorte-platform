@@ -1,22 +1,26 @@
 const pool = require('../config/database');
 
 class AgendaRepository {
-  async findHorasDisponibles({ especialidad, fecha_desde, fecha_hasta, limit = 20 }) {
-    const conditions = ["estado = 'disponible'"];
+  async findHorasDisponibles({ especialidad, fecha_desde, fecha_hasta, medico_rut, limit = 20 }) {
+    // Si se filtra por medico_rut, mostrar todas sus horas (cualquier estado)
+    // Si no, solo mostrar las disponibles para reserva pública
+    const conditions = medico_rut ? [] : ["hm.estado = 'disponible'"];
     const values = [];
     let idx = 1;
 
-    if (especialidad) { conditions.push(`especialidad ILIKE $${idx++}`); values.push(`%${especialidad}%`); }
-    if (fecha_desde)  { conditions.push(`fecha_hora >= $${idx++}`);       values.push(fecha_desde); }
-    if (fecha_hasta)  { conditions.push(`fecha_hora <= $${idx++}`);       values.push(fecha_hasta); }
+    if (medico_rut)   { conditions.push(`m.rut = $${idx++}`);             values.push(medico_rut); }
+    if (especialidad) { conditions.push(`hm.especialidad ILIKE $${idx++}`); values.push(`%${especialidad}%`); }
+    if (fecha_desde)  { conditions.push(`hm.fecha_hora >= $${idx++}`);    values.push(fecha_desde); }
+    if (fecha_hasta)  { conditions.push(`hm.fecha_hora <= $${idx++}`);    values.push(fecha_hasta); }
 
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     values.push(limit);
     const { rows } = await pool.query(
-      `SELECT hm.*, m.nombre as nombre_medico, m.hospital
+      `SELECT hm.*, m.nombre as nombre_medico, m.rut as rut_medico, m.hospital
        FROM horas_medicas hm
        JOIN medicos m ON hm.medico_id = m.id
-       WHERE ${conditions.join(' AND ')}
-       ORDER BY fecha_hora ASC
+       ${where}
+       ORDER BY hm.fecha_hora ASC
        LIMIT $${idx}`,
       values
     );
@@ -68,11 +72,23 @@ class AgendaRepository {
   }
 
   async createHora(data) {
-    const { medico_id, especialidad, hospital, fecha_hora, duracion_min } = data;
+    const { medico_id, medico_rut, especialidad, hospital, fecha_hora, duracion_min } = data;
+
+    // Resolver medico_id desde rut si no viene el UUID directamente
+    let resolvedMedicoId = medico_id;
+    if (!resolvedMedicoId && medico_rut) {
+      const { rows: [medico] } = await pool.query(
+        'SELECT id, especialidad, hospital FROM medicos WHERE rut = $1', [medico_rut]
+      );
+      if (!medico) throw new Error(`Médico con RUT ${medico_rut} no encontrado`);
+      resolvedMedicoId = medico.id;
+    }
+    if (!resolvedMedicoId) throw new Error('Se requiere medico_id o medico_rut');
+
     const { rows } = await pool.query(
       `INSERT INTO horas_medicas (medico_id, especialidad, hospital, fecha_hora, duracion_min)
        VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [medico_id, especialidad, hospital, fecha_hora, duracion_min || 30]
+      [resolvedMedicoId, especialidad, hospital, fecha_hora, duracion_min || 30]
     );
     return rows[0];
   }

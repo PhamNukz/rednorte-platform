@@ -64,8 +64,8 @@ class ListaEsperaRepository {
 
       const { rows: [updated] } = await client.query(
         `UPDATE solicitudes
-         SET estado = $1, fecha_actualizacion = NOW(),
-             fecha_asignacion = CASE WHEN $1 = 'asignada' THEN NOW() ELSE fecha_asignacion END
+         SET estado = $1::estado_solicitud, fecha_actualizacion = NOW(),
+             fecha_asignacion = CASE WHEN $1::text = 'asignada' THEN NOW() ELSE fecha_asignacion END
          WHERE id = $2 RETURNING *`,
         [estadoNuevo, id]
       );

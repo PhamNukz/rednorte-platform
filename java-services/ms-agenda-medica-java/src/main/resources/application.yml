@@ -13,16 +13,14 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update            # Agrega columnas faltantes sin borrar datos
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
   flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
+    enabled: false   # La BD ya fue creada por el ms-agenda-medica Node.js
 
 springdoc:
   api-docs:

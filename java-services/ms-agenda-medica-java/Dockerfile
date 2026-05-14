@@ -12,6 +12,6 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 RUN addgroup -S rednorte && adduser -S rednorte -G rednorte
 USER rednorte
-COPY --from=builder /build/target/ms-agenda-medica-java-1.0.0-SNAPSHOT.jar app.jar
+COPY --from=builder /build/target/ms-agenda-medica-java-*.jar app.jar
 EXPOSE 8082
 ENTRYPOINT ["java", "-jar", "app.jar"]

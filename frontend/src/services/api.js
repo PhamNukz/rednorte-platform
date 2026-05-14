@@ -51,6 +51,9 @@ export const pacientesService = {
 export const agendaService = {
   horasDisponibles: (params) => api.get('/api/agenda/horas/disponibles', { params }),
   medicos: (especialidad) => api.get('/api/agenda/medicos', { params: { especialidad } }),
+  reservarHora: (id, data) => api.patch(`/api/agenda/horas/${id}/reservar`, data),
+  liberarHora: (id) => api.patch(`/api/agenda/horas/${id}/liberar`),
+  crearHora: (data) => api.post('/api/agenda/horas', data),
 };
 
 export const reportesService = {

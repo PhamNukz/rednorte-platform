@@ -25,8 +25,9 @@ export default function Login() {
 
     try {
       const data = await login(rut, password);
-      // Navegación programática según rol — sin reload
-      navigate(data.rol === 'paciente' ? '/portal' : '/admin', { replace: true });
+      if (data.rol === 'paciente')     navigate('/mis-horas', { replace: true });
+      else if (data.rol === 'medico')  navigate('/doctor',    { replace: true });
+      else                             navigate('/admin',     { replace: true });
     } catch (err) {
       // Mostrar error sin recargar — incrementar key para re-animar el shake
       const msg =
