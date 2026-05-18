@@ -50,7 +50,7 @@ router.patch('/horas/:id/reservar', async (req, res) => {
 });
 
 // Liberar hora (al cancelar)
-router.patch('/horas/:id/liberar', verifyToken, requireRole('admin', 'medico'), async (req, res) => {
+router.patch('/horas/:id/liberar', verifyToken, requireRole('admin', 'medico', 'paciente'), async (req, res) => {
   try {
     const hora = await repository.liberar(req.params.id);
     if (!hora) return res.status(404).json({ ok: false, error: 'Hora no encontrada' });

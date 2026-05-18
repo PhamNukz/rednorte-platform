@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { agendaService, listaEsperaService, authService } from '../services/api';
+import { validarRut, limpiarRut, formatearRutInput } from '../utils/rut';
 
 /* ── Datos estáticos ─────────────────────────────────────────────────────── */
 const ESPECIALIDADES = [
@@ -185,19 +186,155 @@ export default function ReservaWizard() {
 
 /* ── Paso 1: Identificación ──────────────────────────────────────────────── */
 function StepRut({ rut, setRut, especialidadPreseleccionada, onNext, onCancel }) {
-  const [err, setErr] = useState('');
-  const handleNext = () => {
-    if (!rut.trim()) { setErr('Ingresa tu RUT para continuar.'); return; }
-    if (rut.length < 7) { setErr('RUT no válido. Ej: 12.345.678-9'); return; }
-    onNext();
+  const [err, setErr]               = useState('');
+  const [checking, setChecking]     = useState(false);
+  const [mode, setMode]             = useState('rut'); // 'rut' | 'register'
+  const [regForm, setRegForm]       = useState({ nombre: '', email: '', telefono: '', password: '', confirm: '' });
+  const [registering, setRegist]    = useState(false);
+  const [regErr, setRegErr]         = useState('');
+
+  const setReg = (k, v) => setRegForm(f => ({ ...f, [k]: v }));
+
+  const handleRutChange = (e) => {
+    const formatted = formatearRutInput(e.target.value);
+    setRut(formatted);
+    setErr('');
   };
+
+  const handleCheckRut = async () => {
+    const clean = limpiarRut(rut);
+    if (!clean) { setErr('Ingresa tu RUT para continuar.'); return; }
+    if (!validarRut(clean)) {
+      setErr('RUT inválido. Verifica el formato y el dígito verificador (Ej: 12345678-9).');
+      return;
+    }
+    setChecking(true);
+    try {
+      const res = await authService.checkRut(clean);
+      if (res.data.exists) {
+        setRut(clean);
+        onNext();
+      } else {
+        setMode('register');
+        setRut(clean);
+      }
+    } catch {
+      setErr('Error al verificar el RUT. Intenta nuevamente.');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    if (!regForm.nombre.trim()) { setRegErr('El nombre es obligatorio.'); return; }
+    if (regForm.password.length < 6) { setRegErr('La contraseña debe tener al menos 6 caracteres.'); return; }
+    if (regForm.password !== regForm.confirm) { setRegErr('Las contraseñas no coinciden.'); return; }
+    setRegist(true);
+    setRegErr('');
+    try {
+      await authService.register({
+        rut,
+        nombre: regForm.nombre,
+        email: regForm.email || undefined,
+        telefono: regForm.telefono || undefined,
+        password: regForm.password,
+      });
+      onNext();
+    } catch (err) {
+      setRegErr(err.response?.data?.error || 'Error al crear la cuenta. Intenta nuevamente.');
+    } finally {
+      setRegist(false);
+    }
+  };
+
+  if (mode === 'register') {
+    return (
+      <div style={s.stepContent}>
+        <div style={s.stepIcon}>👤</div>
+        <h2 style={s.stepTitle}>Crear cuenta</h2>
+        <p style={s.stepDesc}>
+          El RUT <strong>{rut}</strong> no tiene cuenta aún. Completa tus datos para continuar.
+        </p>
+
+        {regErr && (
+          <div style={sr.errBox} className="error-box animate-fadeIn">
+            <span>⚠</span> {regErr}
+          </div>
+        )}
+
+        <form onSubmit={handleRegister}>
+          <div style={s.formGroup}>
+            <label style={s.label}>Nombre completo <span style={sr.req}>*</span></label>
+            <input
+              className="input-field" style={s.input} type="text"
+              placeholder="Ej: Juan Pérez González"
+              value={regForm.nombre} onChange={e => setReg('nombre', e.target.value)}
+              autoFocus required
+            />
+          </div>
+          <div style={sr.row2}>
+            <div>
+              <label style={s.label}>Correo electrónico</label>
+              <input
+                className="input-field" style={s.input} type="email"
+                placeholder="correo@ejemplo.cl"
+                value={regForm.email} onChange={e => setReg('email', e.target.value)}
+              />
+            </div>
+            <div>
+              <label style={s.label}>Teléfono</label>
+              <input
+                className="input-field" style={s.input} type="tel"
+                placeholder="+56 9 1234 5678"
+                value={regForm.telefono} onChange={e => setReg('telefono', e.target.value)}
+              />
+            </div>
+          </div>
+          <div style={sr.row2}>
+            <div>
+              <label style={s.label}>Contraseña <span style={sr.req}>*</span></label>
+              <input
+                className="input-field" style={s.input} type="password"
+                placeholder="Mínimo 6 caracteres"
+                value={regForm.password} onChange={e => setReg('password', e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label style={s.label}>Confirmar contraseña <span style={sr.req}>*</span></label>
+              <input
+                className="input-field" style={s.input} type="password"
+                placeholder="Repite la contraseña"
+                value={regForm.confirm} onChange={e => setReg('confirm', e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div style={sr.infoBox}>
+            <span>ℹ</span> Recuerda esta contraseña para confirmar futuras reservas.
+          </div>
+
+          <div style={s.stepFooter}>
+            <button type="button" onClick={() => { setMode('rut'); setRegErr(''); }} style={s.btnBack}>
+              ← Volver
+            </button>
+            <button type="submit" style={s.btnNext} disabled={registering} className="btn-animate">
+              {registering ? <><span className="spinner" />Creando cuenta…</> : 'Crear cuenta y continuar →'}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div style={s.stepContent}>
       <div style={s.stepIcon}>🪪</div>
       <h2 style={s.stepTitle}>¿Para quién es la hora?</h2>
       <p style={s.stepDesc}>Ingresa el RUT del paciente que será atendido</p>
 
-      {/* Chip de especialidad pre-seleccionada */}
       {especialidadPreseleccionada && (
         <div style={s.preselChip} className="animate-scaleIn">
           <span style={s.preselDot}>✓</span>
@@ -211,21 +348,38 @@ function StepRut({ rut, setRut, especialidadPreseleccionada, onNext, onCancel })
           className="input-field"
           style={{ ...s.input, ...(err ? s.inputErr : {}) }}
           type="text"
-          placeholder="Ej: 12.345.678-9"
+          placeholder="Ej: 12345678-9"
           value={rut}
-          onChange={e => { setRut(e.target.value); setErr(''); }}
-          onKeyDown={e => e.key === 'Enter' && handleNext()}
+          onChange={handleRutChange}
+          onKeyDown={e => e.key === 'Enter' && handleCheckRut()}
           autoFocus
+          maxLength={10}
         />
         {err && <p style={s.errText}>{err}</p>}
+        <p style={sr.hint}>Formato: sin puntos, con guion antes del dígito verificador</p>
       </div>
       <div style={s.stepFooter}>
         <button onClick={onCancel} style={s.btnBack}>Cancelar</button>
-        <button onClick={handleNext} style={s.btnNext} className="btn-animate">Continuar →</button>
+        <button onClick={handleCheckRut} style={s.btnNext} disabled={checking} className="btn-animate">
+          {checking ? <><span className="spinner" />Verificando…</> : 'Continuar →'}
+        </button>
       </div>
     </div>
   );
 }
+
+/* Estilos locales del StepRut */
+const sr = {
+  req:    { color: '#ef4444' },
+  hint:   { fontSize: 12, color: '#94a3b8', marginTop: 6 },
+  row2:   { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 },
+  errBox: { background: '#fef2f2', border: '1px solid #fecaca', borderLeft: '4px solid #ef4444',
+            borderRadius: 10, padding: '10px 14px', marginBottom: 16, color: '#dc2626',
+            fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 },
+  infoBox:{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10,
+            padding: '10px 14px', marginTop: 8, fontSize: 12, color: '#0369a1',
+            display: 'flex', alignItems: 'center', gap: 8 },
+};
 
 /* ── Paso 2: Especialidad ────────────────────────────────────────────────── */
 function StepEspecialidad({ selected, onSelect, onBack }) {
@@ -394,35 +548,46 @@ function ConfirmModal({ rut, tipo, especialidad, slot, onClose, onSuccess }) {
     if (!password) { setError('Ingresa tu contraseña para confirmar.'); return; }
     setLoading(true);
     setError('');
+    let solicitudId = null;
     try {
-      // 1. Verificar identidad
+      // 1. Verificar identidad — si falla aquí, nada queda reservado
       const authRes = await authService.login(rut, password);
       const token = authRes.data.accessToken;
       localStorage.setItem('accessToken', token);
       localStorage.setItem('user', JSON.stringify({ rut, rol: authRes.data.rol, nombre: authRes.data.nombre }));
 
-      // 2. Reservar la hora en agenda
+      // 2. Crear solicitud primero — no bloquea ninguna hora
+      const solRes = await listaEsperaService.registrar({
+        paciente_id:     authRes.data.id,
+        rut_paciente:    rut,
+        nombre_paciente: authRes.data.nombre || rut,
+        especialidad,
+        tipo:            tipo.toLowerCase(),
+        hospital_origen: 'RedNorte',
+        descripcion: `Reserva de hora — ${new Date(slot.fecha_hora).toLocaleString('es-CL')}`,
+      });
+      solicitudId = solRes.data.data?.id;
+
+      // 3. Reservar la hora — solo después de que la solicitud existe
       await agendaService.reservarHora(slot.id, {
         paciente_rut: rut,
         paciente_nombre: authRes.data.nombre || rut,
       });
 
-      // 3. Crear solicitud en lista de espera
-      await listaEsperaService.registrar({
-        paciente_rut:    rut,
-        paciente_nombre: authRes.data.nombre || rut,
-        especialidad,
-        tipo,
-        hospital_origen: 'RedNorte',
-        descripcion: `Reserva de hora — ${new Date(slot.fecha_hora).toLocaleString('es-CL')}`,
-      });
-
       setDone(true);
       setTimeout(onSuccess, 2000);
     } catch (err) {
+      // Si la solicitud fue creada pero la hora no pudo reservarse → cancelar solicitud
+      if (solicitudId) {
+        listaEsperaService.actualizarEstado(solicitudId, 'cancelada', 'Hora no disponible al confirmar')
+          .catch(() => {});
+      }
+      const status = err.response?.status;
       setError(
-        err.response?.status === 401
+        status === 401
           ? 'Contraseña incorrecta. Verifica tus credenciales.'
+          : status === 409
+          ? 'Esta hora ya no está disponible. Por favor elige otro horario.'
           : err.response?.data?.error || 'Error al confirmar la reserva. Intenta nuevamente.'
       );
     } finally {
@@ -491,7 +656,10 @@ function ConfirmModal({ rut, tipo, especialidad, slot, onClose, onSuccess }) {
 function StepProgress({ step, steps }) {
   return (
     <div style={sp.wrap}>
-      <div style={sp.label}>Paso {step}: {steps[step - 1]}</div>
+      <div style={sp.label}>
+        <span style={sp.stepChip}>Paso {step} de {steps.length}</span>
+        {steps[step - 1]}
+      </div>
       <div style={sp.track}>
         {steps.map((label, i) => {
           const num = i + 1;
@@ -504,7 +672,12 @@ function StepProgress({ step, steps }) {
                 {done ? '✓' : num}
               </div>
               {i < steps.length - 1 && (
-                <div style={{ ...sp.line, background: done ? '#0073b1' : '#e5e7eb' }} />
+                <div style={{
+                  ...sp.line,
+                  background: done
+                    ? 'linear-gradient(90deg,#0073b1,#06b6d4)'
+                    : '#e2e8f0',
+                }} />
               )}
             </div>
           );
@@ -514,16 +687,25 @@ function StepProgress({ step, steps }) {
   );
 }
 const sp = {
-  wrap:    { background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '16px 24px' },
-  label:   { fontSize: 13, color: '#6b7280', marginBottom: 12, fontWeight: 500, textAlign: 'center' },
-  track:   { display: 'flex', alignItems: 'center', justifyContent: 'center', maxWidth: 600, margin: '0 auto' },
-  item:    { display: 'flex', alignItems: 'center', flex: 1 },
-  circle:  { width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center',
-             justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 },
-  done:    { background: '#0073b1', color: '#fff' },
-  active:  { background: '#0073b1', color: '#fff', boxShadow: '0 0 0 4px rgba(0,115,177,0.25)' },
-  pending: { background: '#e5e7eb', color: '#9ca3af' },
-  line:    { flex: 1, height: 3, margin: '0 4px', borderRadius: 2, transition: 'background 0.3s' },
+  wrap:     { background: '#fff', borderBottom: '1px solid #e8edf3', padding: '14px 28px',
+              boxShadow: '0 1px 6px rgba(0,0,0,0.04)' },
+  label:    { fontSize: 13, color: '#64748b', marginBottom: 14, fontWeight: 500,
+              textAlign: 'center', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', gap: 8 },
+  stepChip: { background: '#eff6ff', color: '#0073b1', borderRadius: 20,
+              padding: '2px 10px', fontSize: 11, fontWeight: 700, letterSpacing: '0.3px' },
+  track:    { display: 'flex', alignItems: 'center', justifyContent: 'center',
+              maxWidth: 600, margin: '0 auto' },
+  item:     { display: 'flex', alignItems: 'center', flex: 1 },
+  circle:   { width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', fontSize: 13, fontWeight: 800, flexShrink: 0,
+              transition: 'all 0.24s ease' },
+  done:     { background: 'linear-gradient(135deg,#0073b1,#06b6d4)', color: '#fff',
+              boxShadow: '0 2px 8px rgba(0,115,177,0.3)' },
+  active:   { background: 'linear-gradient(135deg,#0073b1,#0084cc)', color: '#fff',
+              boxShadow: '0 0 0 5px rgba(0,115,177,0.18)' },
+  pending:  { background: '#f1f5f9', color: '#94a3b8', border: '2px solid #e2e8f0' },
+  line:     { flex: 1, height: 3, margin: '0 4px', borderRadius: 2, transition: 'background 0.35s ease' },
 };
 
 /* ── Helper ──────────────────────────────────────────────────────────────── */
@@ -539,111 +721,134 @@ function Row2({ label, value }) {
 
 /* ── Estilos ─────────────────────────────────────────────────────────────── */
 const s = {
-  page:         { minHeight: '100vh', background: '#f0f4f8', display: 'flex', flexDirection: 'column' },
-  header:          { background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '0 24px',
+  page:         { minHeight: '100vh', background: '#f1f5f9', display: 'flex', flexDirection: 'column' },
+  header:          { background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(16px)',
+                     borderBottom: '1px solid #e8edf3', padding: '0 28px',
                      height: 60, display: 'flex', alignItems: 'center',
-                     justifyContent: 'space-between', gap: 16 },
+                     justifyContent: 'space-between', gap: 16,
+                     boxShadow: '0 1px 10px rgba(0,0,0,0.06)', position: 'sticky', top: 0, zIndex: 50 },
   backBtn:         { background: 'none', border: 'none', color: '#0073b1', cursor: 'pointer',
-                     fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0 },
-  headerNav:       { display: 'flex', alignItems: 'center', gap: 4, flex: 1,
+                     fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 },
+  headerNav:       { display: 'flex', alignItems: 'center', gap: 2, flex: 1,
                      justifyContent: 'center' },
   headerNavBtn:    { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                      background: 'none', border: 'none', cursor: 'pointer',
-                     padding: '6px 14px', borderRadius: 8,
+                     padding: '7px 14px', borderRadius: 9,
                      transition: 'background 0.15s' },
   headerNavIcon:   { fontSize: 18 },
   headerNavLabel:  { fontSize: 11, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' },
   headerBrandWrap: { display: 'flex', alignItems: 'baseline', gap: 6, flexShrink: 0 },
-  headerBrand:     { fontSize: 16, fontWeight: 800, color: '#0073b1' },
+  headerBrand:     { fontSize: 16, fontWeight: 900, color: '#0073b1', letterSpacing: '-0.4px' },
   headerSep:       { color: '#d1d5db' },
-  headerSub:       { fontSize: 13, color: '#9ca3af' },
+  headerSub:       { fontSize: 13, color: '#94a3b8' },
   progressWrap: { background: '#fff' },
   main:         { flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
                   padding: '32px 24px' },
-  panel:        { background: '#fff', borderRadius: 14, boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-                  padding: '36px 40px', width: '100%', maxWidth: 680 },
+  panel:        { background: '#fff', borderRadius: 20,
+                  boxShadow: '0 8px 40px rgba(0,0,0,0.09)',
+                  padding: '38px 44px', width: '100%', maxWidth: 680,
+                  border: '1px solid #e8edf3' },
 
   stepContent:  { display: 'flex', flexDirection: 'column', gap: 0 },
-  stepIcon:     { fontSize: 44, textAlign: 'center', marginBottom: 8 },
-  stepTitle:    { fontSize: 22, fontWeight: 800, color: '#1a1a2e', textAlign: 'center', marginBottom: 8 },
-  stepDesc:     { fontSize: 14, color: '#9ca3af', textAlign: 'center', marginBottom: 28 },
+  stepIcon:     { fontSize: 46, textAlign: 'center', marginBottom: 8 },
+  stepTitle:    { fontSize: 23, fontWeight: 900, color: '#0f172a', textAlign: 'center',
+                  marginBottom: 8, letterSpacing: '-0.5px' },
+  stepDesc:     { fontSize: 14, color: '#94a3b8', textAlign: 'center', marginBottom: 28, lineHeight: 1.6 },
   stepFooter:   { display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   marginTop: 32, paddingTop: 20, borderTop: '1px solid #f1f5f9' },
 
   formGroup:    { marginBottom: 8 },
-  label:        { display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 },
-  input:        { width: '100%', padding: '12px 14px', border: '1.5px solid #d1d5db',
-                  borderRadius: 8, fontSize: 15, background: '#fafafa', boxSizing: 'border-box' },
-  inputErr:     { borderColor: '#ef4444' },
+  label:        { display: 'block', fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 8 },
+  input:        { width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0',
+                  borderRadius: 10, fontSize: 15, background: '#f8fafc', boxSizing: 'border-box',
+                  color: '#0f172a', outline: 'none' },
+  inputErr:     { borderColor: '#ef4444', background: '#fef2f2' },
   errText:      { color: '#ef4444', fontSize: 12, marginTop: 6 },
-  preselChip:   { background: '#eff6ff', border: '1.5px solid #0073b1', borderRadius: 8,
-                  padding: '10px 14px', fontSize: 13, color: '#1e40af', marginBottom: 20,
+  preselChip:   { background: 'linear-gradient(135deg,#eff6ff,#f0f9ff)',
+                  border: '1.5px solid #bfdbfe', borderRadius: 10,
+                  padding: '10px 16px', fontSize: 13, color: '#1e40af', marginBottom: 20,
                   display: 'flex', alignItems: 'center', gap: 8 },
-  preselDot:    { background: '#0073b1', color: '#fff', borderRadius: '50%', width: 20, height: 20,
+  preselDot:    { background: 'linear-gradient(135deg,#0073b1,#06b6d4)', color: '#fff',
+                  borderRadius: '50%', width: 22, height: 22,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700, flexShrink: 0 },
+                  fontSize: 11, fontWeight: 800, flexShrink: 0 },
 
-  btnNext:      { background: '#0073b1', color: '#fff', border: 'none', padding: '11px 28px',
-                  borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 700 },
-  btnBack:      { background: 'none', border: '1.5px solid #d1d5db', color: '#374151',
-                  padding: '11px 20px', borderRadius: 8, cursor: 'pointer', fontSize: 14 },
+  btnNext:      { background: 'linear-gradient(135deg,#0073b1,#005a8e)', color: '#fff', border: 'none',
+                  padding: '12px 30px', borderRadius: 10, cursor: 'pointer', fontSize: 14, fontWeight: 800,
+                  boxShadow: '0 4px 16px rgba(0,115,177,0.3)', letterSpacing: '0.1px' },
+  btnBack:      { background: 'none', border: '1.5px solid #e2e8f0', color: '#374151',
+                  padding: '12px 22px', borderRadius: 10, cursor: 'pointer', fontSize: 14, fontWeight: 500 },
 
   espGrid:      { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px,1fr))', gap: 12, marginBottom: 8 },
-  espCard:      { border: '2px solid #e5e7eb', borderRadius: 10, padding: '18px 12px', background: '#fafafa',
+  espCard:      { border: '1.5px solid #e2e8f0', borderRadius: 12, padding: '18px 12px', background: '#f8fafc',
                   cursor: 'pointer', textAlign: 'center', display: 'flex', flexDirection: 'column',
                   alignItems: 'center', gap: 8 },
-  espCardActive:{ borderColor: '#0073b1', background: '#eff6ff' },
+  espCardActive:{ borderColor: '#0073b1', background: '#eff6ff',
+                  boxShadow: '0 0 0 3px rgba(0,115,177,0.14)' },
   espIcon:      { fontSize: 28 },
-  espName:      { fontSize: 13, fontWeight: 600, color: '#1a1a2e', lineHeight: 1.3 },
+  espName:      { fontSize: 13, fontWeight: 700, color: '#0f172a', lineHeight: 1.3 },
 
   tipoGrid:     { display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 14, marginBottom: 8 },
-  tipoCard:     { border: '2px solid #e5e7eb', borderRadius: 12, padding: '20px 16px', background: '#fafafa',
+  tipoCard:     { border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '22px 18px', background: '#f8fafc',
                   cursor: 'pointer', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 6 },
-  tipoActive:   { borderColor: '#0073b1', background: '#eff6ff' },
+  tipoActive:   { borderColor: '#0073b1', background: '#eff6ff',
+                  boxShadow: '0 0 0 3px rgba(0,115,177,0.14)' },
   tipoIcon:     { fontSize: 28 },
-  tipoLabel:    { fontSize: 14, fontWeight: 700, color: '#1a1a2e' },
-  tipoDesc:     { fontSize: 12, color: '#9ca3af', lineHeight: 1.4 },
+  tipoLabel:    { fontSize: 14, fontWeight: 800, color: '#0f172a' },
+  tipoDesc:     { fontSize: 12, color: '#94a3b8', lineHeight: 1.5 },
 
   // Step 4
   dateNav:      { display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 24, paddingBottom: 4 },
-  dateBtn:      { border: '2px solid #e5e7eb', borderRadius: 10, padding: '10px 14px', background: '#fafafa',
-                  cursor: 'pointer', textAlign: 'center', minWidth: 70, flexShrink: 0,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 },
-  dateBtnActive:{ borderColor: '#0073b1', background: '#eff6ff' },
-  dateMonth:    { fontSize: 10, textTransform: 'uppercase', color: '#9ca3af', fontWeight: 600 },
-  dateDay:      { fontSize: 22, fontWeight: 800, color: '#1a1a2e' },
-  dateWeek:     { fontSize: 10, color: '#9ca3af' },
+  dateBtn:      { border: '1.5px solid #e2e8f0', borderRadius: 12, padding: '10px 14px', background: '#f8fafc',
+                  cursor: 'pointer', textAlign: 'center', minWidth: 72, flexShrink: 0,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                  transition: 'all 0.16s ease' },
+  dateBtnActive:{ borderColor: '#0073b1', background: '#eff6ff',
+                  boxShadow: '0 0 0 3px rgba(0,115,177,0.14)' },
+  dateMonth:    { fontSize: 10, textTransform: 'uppercase', color: '#94a3b8', fontWeight: 700,
+                  letterSpacing: '0.6px' },
+  dateDay:      { fontSize: 24, fontWeight: 900, color: '#0f172a', letterSpacing: '-1px' },
+  dateWeek:     { fontSize: 10, color: '#94a3b8', fontWeight: 500 },
 
-  doctorSection:{ border: '1px solid #e5e7eb', borderRadius: 12, padding: '18px 20px',
-                  marginBottom: 16, background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' },
-  doctorHeader: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 },
-  doctorAvatar: { width: 42, height: 42, borderRadius: '50%', background: '#0073b1',
+  doctorSection:{ border: '1px solid #e8edf3', borderRadius: 14, padding: '20px 22px',
+                  marginBottom: 16, background: '#fff',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.06)' },
+  doctorHeader: { display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 },
+  doctorAvatar: { width: 44, height: 44, borderRadius: 14,
+                  background: 'linear-gradient(135deg,#0073b1,#0084cc)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#fff', fontWeight: 700, fontSize: 16, flexShrink: 0 },
-  doctorName:   { fontSize: 15, fontWeight: 700, color: '#1a1a2e' },
-  doctorEsp:    { fontSize: 12, color: '#9ca3af' },
+                  color: '#fff', fontWeight: 800, fontSize: 16, flexShrink: 0,
+                  boxShadow: '0 4px 12px rgba(0,115,177,0.28)' },
+  doctorName:   { fontSize: 15, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.2px' },
+  doctorEsp:    { fontSize: 12, color: '#94a3b8', marginTop: 2 },
   slotsGrid:    { display: 'flex', flexWrap: 'wrap', gap: 8 },
   slotBtn:      { border: '1.5px solid #0073b1', color: '#0073b1', background: '#fff',
-                  padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 },
-  slotBtnActive:{ background: '#0073b1', color: '#fff' },
+                  padding: '7px 16px', borderRadius: 9, cursor: 'pointer', fontSize: 13,
+                  fontWeight: 700, transition: 'all 0.14s ease' },
+  slotBtnActive:{ background: 'linear-gradient(135deg,#0073b1,#005a8e)', color: '#fff',
+                  boxShadow: '0 3px 10px rgba(0,115,177,0.32)' },
 
-  emptyHoras:   { textAlign: 'center', padding: '40px 0', color: '#9ca3af', display: 'flex',
+  emptyHoras:   { textAlign: 'center', padding: '40px 0', color: '#94a3b8', display: 'flex',
                   flexDirection: 'column', alignItems: 'center', gap: 12 },
-  spinner:      { width: 36, height: 36, border: '3px solid #e5e7eb', borderTopColor: '#0073b1',
+  spinner:      { width: 36, height: 36, border: '3px solid #e2e8f0', borderTopColor: '#0073b1',
                   borderRadius: '50%', animation: 'spin 0.7s linear infinite', margin: '0 auto' },
 
   // Modal
-  overlay:      { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+  overlay:      { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+                  backdropFilter: 'blur(4px)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
-  modal:        { background: '#fff', borderRadius: 14, padding: '28px 32px',
-                  width: '100%', maxWidth: 480, boxShadow: '0 24px 80px rgba(0,0,0,0.3)' },
+  modal:        { background: '#fff', borderRadius: 20, padding: '30px 34px',
+                  width: '100%', maxWidth: 480, boxShadow: '0 32px 96px rgba(0,0,0,0.3)' },
   modalHeader:  { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle:   { fontSize: 18, fontWeight: 700, color: '#1a1a2e', margin: 0 },
-  closeBtn:     { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#9ca3af' },
-  summaryBox:   { background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 10,
-                  padding: '14px 16px', marginBottom: 18 },
-  confirmDesc:  { fontSize: 13, color: '#6b7280', marginBottom: 16 },
+  modalTitle:   { fontSize: 19, fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.3px' },
+  closeBtn:     { background: '#f1f5f9', border: 'none', fontSize: 14, cursor: 'pointer',
+                  color: '#64748b', width: 30, height: 30, borderRadius: 8,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  summaryBox:   { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12,
+                  padding: '14px 18px', marginBottom: 18 },
+  confirmDesc:  { fontSize: 13, color: '#64748b', marginBottom: 16, lineHeight: 1.6 },
   errBox:       { background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c',
-                  borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 13 },
+                  borderLeft: '4px solid #ef4444', borderRadius: 10,
+                  padding: '10px 14px', marginBottom: 14, fontSize: 13 },
   modalFooter:  { display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20 },
 };

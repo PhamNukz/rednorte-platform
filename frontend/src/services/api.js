@@ -28,7 +28,9 @@ api.interceptors.response.use(
 );
 
 export const authService = {
-  login: (rut, password) => api.post('/api/lista-espera/auth/login', { rut, password }),
+  login:    (rut, password) => api.post('/api/lista-espera/auth/login', { rut, password }),
+  checkRut: (rut)           => api.get(`/api/lista-espera/auth/check/${encodeURIComponent(rut)}`),
+  register: (data)          => api.post('/api/lista-espera/auth/register', data),
 };
 
 export const listaEsperaService = {

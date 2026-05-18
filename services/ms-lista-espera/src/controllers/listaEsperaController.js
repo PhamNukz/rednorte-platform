@@ -30,8 +30,16 @@ const listaEsperaController = {
   async listar(req, res) {
     try {
       const { estado, especialidad, prioridad, limit, offset } = req.query;
-      const data = await repository.findAll({ estado, especialidad, prioridad,
-        limit: parseInt(limit) || 50, offset: parseInt(offset) || 0 });
+      const filters = {
+        estado, especialidad, prioridad,
+        limit: parseInt(limit) || 100,
+        offset: parseInt(offset) || 0,
+      };
+      // Pacientes solo ven sus propias solicitudes
+      if (req.user.rol === 'paciente') {
+        filters.paciente_id = req.user.id;
+      }
+      const data = await repository.findAll(filters);
       res.json({ ok: true, data, total: data.length });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
@@ -89,6 +97,18 @@ const listaEsperaController = {
   async resumen(req, res) {
     try {
       const data = await repository.countByEstado();
+      res.json({ ok: true, data });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  },
+
+  // CQRS — QUERY: siguiente paciente elegible por especialidad (usado por ms-reasignacion)
+  async siguienteElegible(req, res) {
+    try {
+      const { especialidad } = req.query;
+      if (!especialidad) return res.status(400).json({ ok: false, error: 'especialidad requerida' });
+      const data = await repository.getSiguienteElegible(especialidad);
       res.json({ ok: true, data });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });

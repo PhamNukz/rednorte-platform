@@ -314,11 +314,28 @@ services:
     networks:
       - rednorte-net
 
+  # ─── pgAdmin ──────────────────────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: rednorte-pgadmin
+    ports:
+      - "5051:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@rednorte.cl
+      PGADMIN_DEFAULT_PASSWORD: rednorte123
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - rednorte-net
+    restart: unless-stopped
+
 volumes:
   db-espera-data:
   db-reasignacion-data:
   db-pacientes-data:
   db-disponibilidad-data:
+  pgadmin-data:
 
 networks:
   rednorte-net:

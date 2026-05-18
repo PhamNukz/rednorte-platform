@@ -1,39 +1,64 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/api';
+import { validarRut, limpiarRut, formatearRutInput } from '../utils/rut';
 
 export default function Login() {
   const [rut, setRut] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [noAccount, setNoAccount] = useState(false);
   const [loading, setLoading] = useState(false);
-  // Clave para forzar re-render del error sin recargar página
   const [errorKey, setErrorKey] = useState(0);
   const { login } = useAuth();
   const navigate = useNavigate();
   const formRef = useRef(null);
 
+  const handleRutChange = (e) => {
+    setRut(formatearRutInput(e.target.value));
+    setError('');
+    setNoAccount(false);
+  };
+
   const handleSubmit = async (e) => {
-    // Siempre prevenir el comportamiento por defecto del form
     e.preventDefault();
     e.stopPropagation();
-
     if (loading) return;
 
+    const clean = limpiarRut(rut);
+    if (!validarRut(clean)) {
+      setError('RUT inválido. Verifica el formato y el dígito verificador (Ej: 12345678-9).');
+      setErrorKey(k => k + 1);
+      return;
+    }
+
     setError('');
+    setNoAccount(false);
     setLoading(true);
 
     try {
-      const data = await login(rut, password);
+      const data = await login(clean, password);
       if (data.rol === 'paciente')     navigate('/mis-horas', { replace: true });
       else if (data.rol === 'medico')  navigate('/doctor',    { replace: true });
       else                             navigate('/admin',     { replace: true });
     } catch (err) {
-      // Mostrar error sin recargar — incrementar key para re-animar el shake
-      const msg =
-        err.response?.data?.error ||
-        (err.response?.status === 401 ? 'RUT o contraseña incorrectos' : 'Error de conexión. Intente nuevamente.');
-      setError(msg);
+      if (err.response?.status === 401) {
+        // Distinguir "no existe" de "contraseña incorrecta"
+        try {
+          const check = await authService.checkRut(clean);
+          if (!check.data.exists) {
+            setNoAccount(true);
+            setError('Este RUT no tiene cuenta registrada.');
+          } else {
+            setError('Contraseña incorrecta. Intenta nuevamente.');
+          }
+        } catch {
+          setError('RUT o contraseña incorrectos.');
+        }
+      } else {
+        setError(err.response?.data?.error || 'Error de conexión. Intente nuevamente.');
+      }
       setErrorKey(k => k + 1);
     } finally {
       setLoading(false);
@@ -68,7 +93,6 @@ export default function Login() {
             Iniciar Sesión
           </h2>
 
-          {/* Caja de error — se reanima cada vez con errorKey */}
           {error && (
             <div
               key={errorKey}
@@ -77,7 +101,21 @@ export default function Login() {
               role="alert"
             >
               <span style={styles.errorIcon}>⚠</span>
-              {error}
+              <span>
+                {error}
+                {noAccount && (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      onClick={() => navigate('/reservar')}
+                      style={styles.linkBtn}
+                    >
+                      Crear cuenta →
+                    </button>
+                  </>
+                )}
+              </span>
             </div>
           )}
 
@@ -90,8 +128,9 @@ export default function Login() {
               type="text"
               placeholder="12345678-9"
               value={rut}
-              onChange={(e) => setRut(e.target.value)}
+              onChange={handleRutChange}
               autoComplete="username"
+              maxLength={10}
               required
             />
           </div>
@@ -140,76 +179,83 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'linear-gradient(135deg, #0a1628 0%, #0d2137 50%, #0a3356 100%)',
+    background: 'linear-gradient(145deg, #060d1e 0%, #0b1f42 50%, #0d3468 100%)',
     position: 'relative',
     overflow: 'hidden',
   },
   bg: {
     position: 'absolute', inset: 0,
-    backgroundImage: `radial-gradient(circle at 20% 30%, rgba(0,115,177,0.18) 0%, transparent 55%),
-                      radial-gradient(circle at 80% 70%, rgba(0,115,177,0.12) 0%, transparent 55%)`,
+    backgroundImage: `
+      radial-gradient(ellipse 70% 55% at 15% 35%, rgba(0,115,177,0.25) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 45% at 85% 70%, rgba(6,182,212,0.14) 0%, transparent 55%)`,
     pointerEvents: 'none',
   },
   card: {
     position: 'relative',
     background: '#fff',
-    borderRadius: 16,
-    padding: '40px 48px 32px',
-    boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
-    width: 420,
+    borderRadius: 20,
+    padding: '44px 48px 36px',
+    boxShadow: '0 32px 96px rgba(0,0,0,0.38)',
+    width: 430,
     maxWidth: '92vw',
   },
-  logoSection: { textAlign: 'center', marginBottom: 28 },
-  logoIcon: { marginBottom: 10 },
-  brand: { margin: 0, color: '#0073b1', fontSize: 30, fontWeight: 800, letterSpacing: '-0.5px' },
-  brandSub: { margin: '4px 0 0', color: '#888', fontSize: 13 },
+  logoSection: { textAlign: 'center', marginBottom: 30 },
+  logoIcon: { marginBottom: 12 },
+  brand: { margin: 0, color: '#0073b1', fontSize: 32, fontWeight: 900, letterSpacing: '-1px' },
+  brandSub: { margin: '4px 0 0', color: '#94a3b8', fontSize: 13, fontWeight: 500 },
   form: {},
-  heading: { margin: '0 0 20px', color: '#1a1a2e', fontSize: 18, fontWeight: 600 },
+  heading: { margin: '0 0 22px', color: '#0f172a', fontSize: 19, fontWeight: 700, letterSpacing: '-0.3px' },
   errorBox: {
-    background: '#fff5f5',
-    border: '1px solid #fca5a5',
+    background: '#fef2f2',
+    border: '1px solid #fecaca',
     borderLeft: '4px solid #ef4444',
-    borderRadius: 8,
+    borderRadius: 10,
     padding: '11px 14px',
     marginBottom: 18,
-    color: '#b91c1c',
-    fontSize: 14,
+    color: '#dc2626',
+    fontSize: 13.5,
     display: 'flex',
     alignItems: 'center',
     gap: 8,
   },
   errorIcon: { fontSize: 16, flexShrink: 0 },
-  field: { marginBottom: 18 },
-  label: { display: 'block', marginBottom: 6, fontSize: 13.5, color: '#374151', fontWeight: 600 },
+  field: { marginBottom: 20 },
+  label: { display: 'block', marginBottom: 7, fontSize: 13, color: '#374151', fontWeight: 700 },
   input: {
     width: '100%',
-    padding: '10px 14px',
-    border: '1.5px solid #d1d5db',
-    borderRadius: 8,
+    padding: '11px 14px',
+    border: '1.5px solid #e2e8f0',
+    borderRadius: 10,
     fontSize: 15,
     boxSizing: 'border-box',
-    background: '#fafafa',
+    background: '#f8fafc',
+    color: '#0f172a',
   },
   button: {
     width: '100%',
-    padding: '12px',
-    background: 'linear-gradient(135deg, #0073b1 0%, #005f93 100%)',
+    padding: '13px',
+    background: 'linear-gradient(135deg, #0073b1 0%, #005a8e 100%)',
     color: '#fff',
     border: 'none',
-    borderRadius: 8,
+    borderRadius: 10,
     fontSize: 15,
-    fontWeight: 700,
-    marginTop: 8,
+    fontWeight: 800,
+    marginTop: 10,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
+    boxShadow: '0 4px 18px rgba(0,115,177,0.38)',
   },
   hint: {
     textAlign: 'center',
-    color: '#9ca3af',
-    fontSize: 11.5,
-    marginTop: 24,
-    lineHeight: 1.5,
+    color: '#94a3b8',
+    fontSize: 12,
+    marginTop: 26,
+    lineHeight: 1.6,
+  },
+  linkBtn: {
+    background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer',
+    fontSize: 13, fontWeight: 700, textDecoration: 'underline', padding: 0,
   },
 };

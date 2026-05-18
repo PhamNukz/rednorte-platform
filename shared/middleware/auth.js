@@ -48,4 +48,19 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { verifyToken, generateTokens, requireRole };
+/**
+ * Genera un JWT de larga duración para llamadas internas entre microservicios.
+ * El token lleva rol 'admin' para que pase los requireRole de todos los servicios.
+ */
+// UUID fijo para llamadas de sistema — compatible con columnas cambiado_por UUID en BD
+const SYSTEM_UUID = '00000000-0000-0000-0000-000000000001';
+
+function generateServiceToken(serviceName = 'internal') {
+  return jwt.sign(
+    { id: SYSTEM_UUID, service: serviceName, rol: 'admin', type: 'service' },
+    JWT_SECRET,
+    { expiresIn: '365d' }
+  );
+}
+
+module.exports = { verifyToken, generateTokens, requireRole, generateServiceToken };

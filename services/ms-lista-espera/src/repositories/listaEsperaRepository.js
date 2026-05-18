@@ -29,7 +29,7 @@ class ListaEsperaRepository {
   }
 
   // CQRS — operación de sólo lectura: filtra por estado y/o especialidad
-  async findAll({ estado, especialidad, prioridad, limit = 50, offset = 0 } = {}) {
+  async findAll({ estado, especialidad, prioridad, paciente_id, limit = 100, offset = 0 } = {}) {
     const conditions = [];
     const values = [];
     let idx = 1;
@@ -37,15 +37,14 @@ class ListaEsperaRepository {
     if (estado) { conditions.push(`estado = $${idx++}`); values.push(estado); }
     if (especialidad) { conditions.push(`especialidad ILIKE $${idx++}`); values.push(`%${especialidad}%`); }
     if (prioridad) { conditions.push(`prioridad = $${idx++}`); values.push(prioridad); }
+    if (paciente_id) { conditions.push(`paciente_id = $${idx++}`); values.push(paciente_id); }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     values.push(limit, offset);
 
     const { rows } = await pool.query(
       `SELECT * FROM solicitudes ${where}
-       ORDER BY
-         CASE prioridad WHEN 'critica' THEN 1 WHEN 'alta' THEN 2 WHEN 'media' THEN 3 ELSE 4 END,
-         fecha_ingreso ASC
+       ORDER BY fecha_ingreso DESC
        LIMIT $${idx++} OFFSET $${idx}`,
       values
     );

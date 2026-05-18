@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (rut, password) => {
     const { data } = await authService.login(rut, password);
     localStorage.setItem('accessToken', data.accessToken);
-    const userData = { rut, rol: data.rol, nombre: data.nombre || data.user?.nombre || '' };
+    const userData = { id: data.id, rut, rol: data.rol, nombre: data.nombre || data.user?.nombre || '' };
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
     return data;
