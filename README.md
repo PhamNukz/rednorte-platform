@@ -1,3 +1,21 @@
+# ⚠️ Repositorio archivado — migrado a arquitectura polyrepo
+
+> Este monorepo se conserva como **referencia histórica**. El proyecto fue reorganizado en **un repositorio por componente** (microservicios independientes, con CI/CD en GitHub Actions y despliegue en Oracle Cloud).
+
+**➡️ La fuente de verdad ahora son estos repositorios** — empieza por **[`rednorte-infra`](https://github.com/PhamNukz/rednorte-infra)**, que contiene la orquestación y la **documentación completa** del sistema:
+
+| Componente | Repositorio(s) |
+|-----------|----------------|
+| 📖 Orquestación + documentación | [`rednorte-infra`](https://github.com/PhamNukz/rednorte-infra) |
+| 📚 Librería compartida | [`rednorte-shared`](https://github.com/PhamNukz/rednorte-shared) |
+| ⚙️ Microservicios Node | [`rednorte-ms-lista-espera`](https://github.com/PhamNukz/rednorte-ms-lista-espera) · [`-reasignacion`](https://github.com/PhamNukz/rednorte-ms-reasignacion) · [`-pacientes`](https://github.com/PhamNukz/rednorte-ms-pacientes) · [`-agenda-medica`](https://github.com/PhamNukz/rednorte-ms-agenda-medica) · [`-notificaciones`](https://github.com/PhamNukz/rednorte-ms-notificaciones) · [`-reportes`](https://github.com/PhamNukz/rednorte-ms-reportes) |
+| ☕ Servicios Java | [`rednorte-bff`](https://github.com/PhamNukz/rednorte-bff) · [`rednorte-ms-lista-espera-java`](https://github.com/PhamNukz/rednorte-ms-lista-espera-java) · [`rednorte-ms-agenda-medica-java`](https://github.com/PhamNukz/rednorte-ms-agenda-medica-java) |
+| 🖥️ Frontend | [`rednorte-frontend`](https://github.com/PhamNukz/rednorte-frontend) |
+
+---
+
+<!-- ↓↓↓ README histórico original del monorepo ↓↓↓ -->
+
 # Plataforma de Gestión de Listas de Espera — RedNorte
 
 **DSY1106 Desarrollo Fullstack III | DuocUC 2026**
