@@ -1,4 +1,4 @@
-# ⚠️ Repositorio archivado — migrado a arquitectura polyrepo
+# ⚠️ Repositorio archivado — migrado a arquitectura polyrepo (2026)
 
 > Este monorepo se conserva como **referencia histórica**. El proyecto fue reorganizado en **un repositorio por componente** (microservicios independientes, con CI/CD en GitHub Actions y despliegue en Oracle Cloud).
 
